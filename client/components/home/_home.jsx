@@ -10,6 +10,8 @@ export const Home = () => {
   const [, setAuthToken] = useContext(AuthContext);
   const api = useContext(ApiContext);
   const roles = useContext(RolesContext);
+  const [localRooms, setLocalRooms] = useState([]);
+  const [coordinates, setCoordinates] = useState([]);
 
   const navigate = useNavigate();
 
