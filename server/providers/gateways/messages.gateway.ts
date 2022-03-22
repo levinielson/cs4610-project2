@@ -11,9 +11,15 @@ import { GatewayAuthGuard } from '../guards/gatewayauth.guard';
 import { UseGuards } from '@nestjs/common';
 import { JwtService } from '../services/jwt.service';
 
+class chatMessagePayload {
+  contents: string;
+  userName: string;
+}
+
+
 @WebSocketGateway()
 @UseGuards(GatewayAuthGuard)
-export class MessagesGateway {
+export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
 
@@ -30,5 +36,17 @@ export class MessagesGateway {
     }
   }
 
-  
+  handleDisconnect(client: any) {
+    console.log("Client disconnected");
+  }
+
+  @SubscribeMessage('message')
+  handleMessage(client: Socket, payload: chatMessagePayload) {
+    const message = payload.contents;
+    const sender = payload.userName;
+    this.server.to(`${client.handshake.query.chatRoomId}`).emit('message', message, sender)
+  }
+
+
+
 }
