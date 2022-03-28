@@ -5,7 +5,7 @@ export class AddChatRoom1647314386408 implements MigrationInterface {
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.createTable(
             new Table ({
-                name: 'chatRoom',
+                name: 'chat_room',
                 columns: [
                     {
                         name: 'id',
@@ -22,13 +22,17 @@ export class AddChatRoom1647314386408 implements MigrationInterface {
                         name: 'xCoordinate',
                         type: 'float',
                         isNullable: false,
+                    },
+                    {
+                        name: 'name',
+                        type: 'text'
                     }
                 ]
         }))
     }
 
     public async down(queryRunner: QueryRunner): Promise<void> {
-        await queryRunner.dropTable('chatRoom');
+        await queryRunner.dropTable('chat_room');
     }
 
 }

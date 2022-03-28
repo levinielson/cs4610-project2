@@ -6,7 +6,7 @@ export class ChatRoom {
   id: number;
 
   @Column()
-  roomName: string;
+  name: string;
 
   @Column()
   xCoordinate: number;
