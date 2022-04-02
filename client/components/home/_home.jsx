@@ -1,80 +1,91 @@
-import { useContext, useEffect, useState } from 'react';
+import { useContext, useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router';
 import { ApiContext } from '../../utils/api_context';
 import { AuthContext } from '../../utils/auth_context';
-import { RolesContext } from '../../utils/roles_context';
 import { Button } from '../common/button';
-import { Ping } from './ping';
-import { RoomCard } from '../common/room_card';
 import { Input } from '../common/input';
+import mapboxgl from 'mapbox-gl';
+import { TopBar } from '../common/top_bar';
+mapboxgl.accessToken = 'pk.eyJ1IjoibGV2aW5pZWxzb24iLCJhIjoiY2wxYmUwcDFsMDJkOTNpcDFneHQ0MmNyNCJ9.kkuzXsGq6n7pShT7TebTUw';
 
 export const Home = () => {
   const [, setAuthToken] = useContext(AuthContext);
   const api = useContext(ApiContext);
-  const roles = useContext(RolesContext);
-  const [localRooms, setLocalRooms] = useState([]);
-  const [allRooms, setAllRooms] = useState([]);
-  const [coordinates, setCoordinates] = useState([]);
+  const [coordinates, setCoordinates] = useState({});
   const [roomName, setRoomName] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
-
+  const [loading, setLoading] = useState(true);
+  const [localRooms, setLocalRooms] = useState([]);
+  const [map, setMap] = useState(null);
+  
   const navigate = useNavigate();
 
-  const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(null);
-  useEffect(async () => {
-    const res = await api.get('/users/me');
-    const rooms = await api.get('/chatRooms');
-    setAllRooms(rooms.rooms);
-    setUser(res.user);
-    setLoading(false);
-  }, []);
-
-  const distance = (lon1, lon2, lat1, lat2) => {
-    if (x1 === x2 && y1 === y2) {
-      return 0;
-    }
-    else {
-      latitude1InRadians = Math.PI * lat1 / 180;
-      latitude2InRadians = Math.PI * lat2 / 180;
-      theta = lon1-lon2;
-      radTheta = Math.PI * theta / 180;
-      dist = Math.sin(latitude1InRadians) * Math.sin(latitude2InRadians) + Math.cos(latitude1InRadians) * Math.cos(latitude2InRadians) * Math.cos(radTheta);
-      if (dist > 1) {
-        dist = 1;
-      }
-      dist = Math.acos(dist);
-      dist = dist * 180 / Math.PI;
-      dist = dist * 60 * 1.1515;
-      return dist;
-    }
-  }
 
   useEffect(() => {
-    if (allRooms) {
-      const locate = navigator.geolocation.getCurrentPosition((location) => {
-        latitude = location.coords.latitude;
-        longitude = location.coords.longitude;
-        console.log(latitude, longitude);
-        setCoordinates([latitude, longitude]);
-        for (let i = 0; i < allRooms.length; i++) {
-          roomDistance = distance(longitude, allRooms[i].longitude, latitude, allRooms[i].latitude)
-          if (roomDistance <= 50) {
-            setLocalRooms([...localRooms, allRooms[i]])
-          }
-        }
-      }, (error) => {
-        console.log(error);
-      })
+    if (!user)  {
+      const res = api.get('/users/me');
+      res.then(res => {
+        setUser(res.user);
+        setLoading(false);
+      });
+    }
+    api.get('/chatRooms')
+      .then(res => {
+        let rooms = res.chatRooms;
+        const locate = navigator.geolocation.getCurrentPosition((location) => {
+          latitude = location.coords.latitude;
+          longitude = location.coords.longitude;
+          setCoordinates({latitude, longitude});
+          rooms = rooms.filter(room => {
+            const distance = getDistance(latitude, longitude, room.yCoordinate, room.xCoordinate);
+            return distance < 50;
+          });
+          const map = new mapboxgl.Map({
+            container: 'map', // container ID
+            style: 'mapbox://styles/mapbox/streets-v11', // style URL
+            center: [longitude, latitude], // starting position [lng, lat]
+            zoom: 12 // starting zoom
+          });
+          rooms.forEach((room) => {
+            const marker = new mapboxgl.Marker()
+              .setLngLat([room.xCoordinate, room.yCoordinate])
+            marker.getElement().onclick = () => {
+              navigate(`/chatRooms/${room.id}`);
+            }
+            marker.addTo(map);
+            setLocalRooms(rooms);
+            setMap(map);
+          });
+        }, (error) => {
+          console.log(`Got this geolocation error: ${error}`);
+        })
+        return () => {
+          navigator.geolocation.clearWatch(locate);
+        };
+      });
+  }, []);
 
-      return () => {
-        navigator.geolocation.clearWatch(locate);
-      };
+  function getDistance(lat1, lon1, lat2, lon2) 
+    {
+      var R = 6371; // km
+      var dLat = toRad(lat2-lat1);
+      var dLon = toRad(lon2-lon1);
+      var lat1 = toRad(lat1);
+      var lat2 = toRad(lat2);
+
+      var a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.sin(dLon/2) * Math.sin(dLon/2) * Math.cos(lat1) * Math.cos(lat2); 
+      var c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a)); 
+      var d = R * c;
+      return d;
     }
-    else {
-      return () => {}
+
+    // Converts numeric degrees to radians
+    function toRad(Value) 
+    {
+        return Value * Math.PI / 180;
     }
-  }, [allRooms]);
 
   const logout = async () => {
     const res = await api.del('/sessions');
@@ -83,35 +94,31 @@ export const Home = () => {
     }
   };
 
-  if (loading) {
-    return <div>Loading...</div>;
-  }
-
   const createRoom = async () => {
     if (roomName) {
-      await api.post('chatRooms', {xCoordinate: coordinates[0], yCoordinate: coordinates[1], roomName: roomName})
+      const res = await api.post('/chatRooms', {xCoordinate: coordinates.longitude, yCoordinate: coordinates.latitude, name: roomName});
+      setLocalRooms([...localRooms, res.chatRoom]);
+      const marker = new mapboxgl.Marker()
+        .setLngLat([coordinates.longitude, coordinates.latitude])
+      marker.getElement().onclick = () => {
+        navigate(`/chatRooms/${res.chatRoom.id}`);
+      }
+      marker.addTo(map);
+    }
+    else {
+      alert("Please enter a room name");
     }
   }
 
   return (
-    <div className="p-4">
-      <h1>Welcome {user.firstName}</h1>
-      <Button type="button" onClick={logout}>
-        Logout
-      </Button>
-      {roles.includes('admin') && (
-        <Button type="button" onClick={() => navigate('/admin')}>
-          Admin
-        </Button>
-      )}
-      <Input type='text' value={roomName} onChange={(e) => setRoomName(e.target.value)}/>
-      <Button type="button" onClick={() => createRoom()}>Create Room</Button>
-      {localRooms.map((room) => (
-        <RoomCard key={room.id} room={room}/>
-      ))}
-      <section>
-        <Ping />
-      </section>
-    </div>
+    <>
+      <TopBar leftSide="Logout" click={logout} center="Geolocation Chat"/>
+      <div className="p-4">
+        <Input type='text' value={roomName} onChange={(e) => setRoomName(e.target.value)}/>
+        <Button type="button" onClick={() => createRoom()}>Create Room</Button>
+        <p>{errorMessage}</p>
+        <div id="map"/>
+      </div>
+    </>
   );
 };

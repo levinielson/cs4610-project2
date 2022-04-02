@@ -14,6 +14,7 @@ import { JwtService } from '../services/jwt.service';
 class chatMessagePayload {
   contents: string;
   userName: string;
+  id: number;
 }
 
 
@@ -29,7 +30,7 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
     try {
       const jwt = client.handshake.auth.token;
       this.jwtService.parseToken(jwt);
-      client.join(client.handshake.query.chatRoomId as unknown as string)
+      client.join(client.handshake.query.chatRoomId as unknown as string);
     }
     catch (e) {
       throw new WsException("Invalid token");
@@ -42,9 +43,10 @@ export class MessagesGateway implements OnGatewayConnection, OnGatewayDisconnect
 
   @SubscribeMessage('message')
   handleMessage(client: Socket, payload: chatMessagePayload) {
-    const message = payload.contents;
+    const contents = payload.contents;
     const sender = payload.userName;
-    this.server.to(`${client.handshake.query.chatRoomId}`).emit('message', message, sender)
+    const id = payload.id;
+    this.server.to(`${client.handshake.query.chatRoomId}`).emit('message', {contents, sender, id})
   }
 
 

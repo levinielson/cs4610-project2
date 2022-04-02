@@ -11,7 +11,7 @@ export class AddChatRoom1647314386408 implements MigrationInterface {
                         name: 'id',
                         type: 'int',
                         isPrimary: true,
-                        isGenerated: true
+                        isGenerated: true,
                     },
                     {
                         name: 'yCoordinate',

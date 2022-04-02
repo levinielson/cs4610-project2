@@ -5,12 +5,12 @@ export const RoomCard = ({room}) => {
   const navigate = useNavigate();
 
   const redirect = () => {
-    navigate(`/rooms/${room.id}`);
+    navigate(`/chatRooms/${room.id}`);
   }
 
   return (
     <div onClick={redirect}>
-      <p>{room.roomName}</p>
+      <p>{room.name}</p>
     </div>
   )
 }

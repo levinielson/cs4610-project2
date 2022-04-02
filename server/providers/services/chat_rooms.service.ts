@@ -11,11 +11,14 @@ export class ChatRoomsService {
   ) {}
 
   findAll(relations: string[] = []) {
-    console.log("error here")
     return this.chatRoomsRepository.find({ relations });
   }
 
   save(room: ChatRoom): Promise<ChatRoom> {
     return this.chatRoomsRepository.save(room);
+  }
+
+  findOne(id: number, relations: string[] = []) {
+    return this.chatRoomsRepository.findOne(id, { relations });
   }
 }

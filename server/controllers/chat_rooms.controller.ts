@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param } from '@nestjs/common';
 import { ChatRoomsService } from 'server/providers/services/chat_rooms.service';
 import { ChatRoom } from 'server/entities/chat_room.entity';
 
@@ -20,13 +20,20 @@ export class ChatRoomsController{
     return { chatRooms };
   }
 
+  @Get('chatRooms/:id')
+  async show(@Param('id') id: number) {
+    const chatRoom = await this.chatRoomsService.findOne(id);
+    return { chatRoom };
+  }
+
   @Post('/chatRooms')
   public async create(@Body() chatRoomPostBody: ChatRoomPostBody) {
     let room = new ChatRoom();
-    room.roomName = chatRoomPostBody.name;
+    room.name = chatRoomPostBody.name;
     room.xCoordinate = chatRoomPostBody.xCoordinate;
     room.yCoordinate = chatRoomPostBody.yCoordinate;
     const chatRoom = await this.chatRoomsService.save(room);
+    return { chatRoom };
   }
 
 }
