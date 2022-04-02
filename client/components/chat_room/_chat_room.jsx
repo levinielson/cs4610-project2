@@ -40,7 +40,7 @@ export const ChatRoom = () => {
         <div className="chat-input align-bottom bottom-0">
           <input type="text" value={input} onChange={(e) => setInput(e.target.value)} />
           <Button onClick={() => {
-		  sendMessage(input, user;
+		  sendMessage(input, user);
 		  setInput('');}}>Send</Button>
         </div>
       </div>
